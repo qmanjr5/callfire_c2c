@@ -27,22 +27,22 @@ class callfire_c2c
 	public static function init()
 	{
 		define('WP_DEBUG', true);
-		add_action('wp_loaded', array('callfire_c2c', 'call'));
 		add_action('admin_init', array('callfire_c2c','settings_init'));
 		add_shortcode('callfire-c2c', array('callfire_c2c', 'shortcode'));
 	}
 	public static function shortcode($atts)
 	{
 		self::setOptions($atts);
-		$callid = self::$id;
 		if(isset($_POST['callid']))
 		{
-			if($_POST['callid'] == self::$id)
+			if($_POST['callid'] == self::$id && self::$calls[self::$id]['has_called'] == false)
 			{
-				$callinfo = array("type" => self::$type,	"number" => $_POST['number'], "soundid" => self::$soundid);
+				$callinfo = array("type" => self::$type,	"number" => $_POST['number'], "soundid" => self::$soundid, 'id' => self::$id);
 				self::queueCall($callinfo);
+				self::call();
 			}
 		}
+		$callid = self::$id;
 		$return = "<form action='' method='post' name='c2c'><input type='text' name='number'/><input type='hidden' name='callid' value='{$callid}'/><button type='submit'>Submit</button></form>";
 		return $return;
 	}
@@ -94,10 +94,14 @@ class callfire_c2c
 	}
 	public static function queueCall($call)
 	{
-		self::$calls[] = $call;
+		if(!isset(self::$calls[$call['id']]))
+		{
+			self::$calls[$call['id']] = $call;
+			self::$calls[$call['id']]['has_called'] = false;
+		}
 	}
 	public static function call()
-	{
+	{	
 		if(count(self::$calls) > 0)
 		{
 			$apikey = self::$api_key;
@@ -105,34 +109,37 @@ class callfire_c2c
 			$fromnum = self::$fromnum;
 			foreach(self::$calls as $call)
 			{
-				$type = $call['type'];
-				$soundid = $call['soundid'];
-				$number = $call['number'];
-				$client = CallFire\Api\Client::Rest($apikey, $apipass, "Call");
-
-				if($type == "voice")
+				if($call['has_called'] == false)
 				{
-					$request = new Request\SendCall;
-					$request->setType($client::BROADCAST_VOICE);
-					$request->setFrom($fromnum);
-					$request->setTo($number);
-					$request->setAnsweringMachineConfig($client::AMCONFIG_LIVE_IMMEDIATE);
-					$request->setLiveSoundId($soundid);
-					$response = $client->SendCall($request);
-					$result = $client::response($response);
-					if($result instanceof Response\ResourceReference)
-					{
-						return true;
-					}
-					else
-					{
-						return "Error";
-					}
+					$type = $call['type'];
+					$soundid = $call['soundid'];
+					$number = $call['number'];
+					$client = CallFire\Api\Client::Rest($apikey, $apipass, "Call");
 
+					if($type = "voice")
+					{
+						$request = new Request\SendCall;
+						$request->setType($client::BROADCAST_VOICE);
+						$request->setFrom($fromnum);
+						$request->setTo($number);
+						$request->setAnsweringMachineConfig($client::AMCONFIG_LIVE_IMMEDIATE);
+						$request->setLiveSoundId($soundid);
+						$response = $client->SendCall($request);
+						$result = $client::response($response);
+						if($result instanceof Response\ResourceReference)
+						{
+							echo "Success";
+						}
+						else
+						{
+							return "Error";
+						}
+
+					}
+					self::$calls[$call['id']]['has_called'] = true;
 				}
-			}
 
+			}
 		}
 	}
 }
-
