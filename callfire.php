@@ -26,7 +26,6 @@ class callfire_c2c
 
 	public static function init()
 	{
-		define('WP_DEBUG', true);
 		add_action('admin_init', array('callfire_c2c','settings_init'));
 		add_shortcode('callfire-c2c', array('callfire_c2c', 'shortcode'));
 	}
@@ -37,7 +36,7 @@ class callfire_c2c
 		{
 			if($_POST['callid'] == self::$id && self::$calls[self::$id]['has_called'] == false)
 			{
-				$callinfo = array("type" => self::$type,	"number" => $_POST['number'], "soundid" => self::$soundid, 'id' => self::$id);
+				$callinfo = array("type" => self::$type, "number" => $_POST['number'], "soundid" => self::$soundid, 'id' => self::$id);
 				self::queueCall($callinfo);
 				self::call();
 			}
@@ -128,7 +127,7 @@ class callfire_c2c
 						$result = $client::response($response);
 						if($result instanceof Response\ResourceReference)
 						{
-							echo "Success";
+							return true;
 						}
 						else
 						{
